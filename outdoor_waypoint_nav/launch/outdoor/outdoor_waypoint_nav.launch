@@ -33,6 +33,6 @@
      <!-- Using standard configuration file -->
   	<!--node name="rviz" pkg="rviz" type="rviz" args="-d $(find husky_viz)/rviz/model.rviz" /-->
      <!-- Using custom configuration file -->
-	<!--node name="rviz" pkg="rviz" type="rviz" args="-d $(find outdoor_waypoint_nav)/rviz_config/model.rviz" /-->
+	<!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find outdoor_waypoint_nav)/rviz_config/model.rviz" /> -->
 
 </launch>
