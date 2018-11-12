@@ -43,6 +43,10 @@ target_link_libraries(calibrate_heading ${catkin_LIBRARIES})
 target_link_libraries(safety_node ${catkin_LIBRARIES})
 target_link_libraries(switch_controllers ${catkin_LIBRARIES})
 
+# global checkpoints
+add_executable(global_checkpoints src/global_checkpoints.cpp)
+target_link_libraries(global_checkpoints ${catkin_LIBRARIES})
+
 install(DIRECTORY  launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
