@@ -1,24 +1,10 @@
 /*
-
-	simulation latitude longitude
-
-	top left
-		49.8999160171 8.90012732623
-
-	top right
-		49.8999237892 8.89987663986
-
-	bottom left
-		49.9000753632 8.90012531813
-
-	bottom right
-		49.9000770425 8.89988743462
-	
-	49.8999237892 8.89987663986 49.8999160171 8.90012732623 49.9000753632 8.90012531813 49.9000770425 8.89988743462
-
-*/
-
-
+ * 
+ * 	a class to allow navigation between GPS points
+ * 
+ * */
+#ifndef GLOBAL_CHECKPOINT_H_
+#define GLOBAL_CHECKPOINT_H_
 
 #include <ros/ros.h>
 #include <ros/package.h>
@@ -32,17 +18,10 @@
 #include <std_msgs/Bool.h>
 #include <tf/transform_listener.h>
 #include <math.h>
-//#include <string>
-//#include <iostream>
+
+#include <std_msgs/Float32MultiArray.h>
 
 typedef actionlib::SimpleActionClient <move_base_msgs::MoveBaseAction> MoveBaseClient; 
-
-
-//struct PointXY {
-//	double x;
-//	double y;
-//};
-
 
 
 class PathGenerator {
@@ -56,6 +35,15 @@ class PathGenerator {
 		~PathGenerator() {
 			
 		}
+		
+		
+		ros::Publisher generatePublisherUTM() {
+			ros::NodeHandle nh;
+			ros::Publisher pub = nh.advertise<geometry_msgs::PointStamped>(
+				"gps_checkpoint_list", 100);
+			return pub;
+		}
+		
 				
 		geometry_msgs::PointStamped latLongtoUTM(double lati, double longi) {
 			geometry_msgs::PointStamped utm_point;
@@ -91,6 +79,23 @@ class PathGenerator {
 		geometry_msgs::PointStamped utmToOdomPoint(const geometry_msgs::PointStamped& utm_point) {
 			return transformPoint(utm_point, "odom", "utm");
 		}
+
+
+		/*
+		void publishGPS(int argc, char* argv[]) {
+			ros::NodeHandle nh;
+			ros::Publisher pub = nh.advertise<std_msgs::Float32MultiArray>("gps_checkpoint_list", 100);
+			ros::Duration(5).sleep();
+			std_msgs::Float32MultiArray gps;
+			for (int i = 1; i < argc; i += 2) {
+				double lati = std::atof(argv[i]),
+					longi = std::atof(argv[i+1]);
+				gps.data.push_back(lati);
+				gps.data.push_back(longi);
+			}
+			pub.publish(gps);
+		}
+		*/
 
 
 		std::vector<geometry_msgs::PointStamped> setWaypoints(int argc, char* argv[]) {
@@ -152,6 +157,26 @@ class PathGenerator {
 		}
 		
 		
+		int getGoalNum() {
+			return static_cast<int>(this->waypoint_ - this->path_.begin())+1;
+		}
+		
+		
+		void publishWaypointUTM(
+			const ros::Publisher& pub,
+			const geometry_msgs::PointStamped& point)
+		{
+			geometry_msgs::PointStamped gps;
+			// gps.stamp = ros::Time::now();
+			// gps.data.push_back(point.point.y);
+			// gps.data.push_back(point.point.x);
+			gps.point.y = point.point.y;
+			gps.point.x = point.point.x;
+			gps.header.stamp = ros::Time::now();
+			pub.publish(gps);
+		}
+		
+		
 		bool goalNotReached() {
 			return this->waypoint_ != this->path_.end();
 		}
@@ -169,9 +194,12 @@ class PathGenerator {
 		
 		int run(int argc, char* argv[]) {
 			
-			ros::init(argc, argv, "global_simple");
+			ros::init(argc, argv, "global_checkpoints");
 			this->path_ = this->setWaypoints(argc, argv);
 			this->waypoint_ = this->path_.begin();
+			int total_goals = static_cast<int>(
+				this->path_.end()-this->path_.begin());
+			ros::Publisher utm_pub = generatePublisherUTM();
 			
 			MoveBaseClient ac("move_base", true);
 			while(!ac.waitForServer(ros::Duration(5.0))) {
@@ -196,9 +224,10 @@ class PathGenerator {
 				ac.waitForResult();
 				ROS_INFO("Sending goal...");
 				if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
-					int goal_num = static_cast<int>(this->waypoint_ - this->path_.begin())+1;
-					int total_goals = static_cast<int>(this->path_.end() - this->path_.begin());
-					ROS_INFO("Reached goal %d of %d successfully.", goal_num, total_goals);
+					// int goal_num = static_cast<int>(this->waypoint_ - this->path_.begin())+1;
+					ROS_INFO("Reached goal %d of %d successfully.", 
+						this->getGoalNum(), total_goals);
+					this->publishWaypointUTM(utm_pub, *this->waypoint_);
 					++this->waypoint_;
 				} else {
 					ROS_INFO("Navigation goal failed...");
@@ -207,6 +236,7 @@ class PathGenerator {
 				r.sleep();
 			}
 			ROS_INFO("Navigation completed.");
+			//ros::Duration(30).sleep();
 			return 0;
 		}
 		
@@ -218,14 +248,5 @@ class PathGenerator {
 
 };
 
-
-int main(int argc, char* argv[]) {
-	if (argc >= 3 && (argc-1) % 2 == 0) {
-		PathGenerator path_gen = PathGenerator();
-		return path_gen.run(argc,argv);
-	} else {
-		printf("Invalid number of arguments!");
-		return -1;
-	}
-}
+#endif
 
