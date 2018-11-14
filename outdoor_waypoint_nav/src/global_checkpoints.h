@@ -18,7 +18,6 @@
 #include <std_msgs/Bool.h>
 #include <tf/transform_listener.h>
 #include <math.h>
-
 #include <std_msgs/Float32MultiArray.h>
 
 typedef actionlib::SimpleActionClient <move_base_msgs::MoveBaseAction> MoveBaseClient; 
@@ -162,6 +161,12 @@ class PathGenerator {
 		}
 		
 		
+		int getTotalGoals() {
+			return static_cast<int>(
+				this->path_.end()-this->path_.begin());
+		}
+		
+		
 		void publishWaypointUTM(
 			const ros::Publisher& pub,
 			const geometry_msgs::PointStamped& point)
@@ -174,6 +179,26 @@ class PathGenerator {
 			gps.point.x = point.point.x;
 			gps.header.stamp = ros::Time::now();
 			pub.publish(gps);
+		}
+		
+		
+		void navSuccess(ros::Publisher& utm_pub) {
+			ROS_INFO("Reached goal %d of %d successfully.", 
+				this->getGoalNum(), this->getTotalGoals());
+			this->publishWaypointUTM(utm_pub, *this->waypoint_);
+			++this->waypoint_;
+		}
+		
+		
+		void diagnoseNavFailure(MoveBaseClient& ac) {
+			if (ac.getState() == actionlib::SimpleClientGoalState::REJECTED) {
+				ROS_INFO("Goal rejected.  Shutting down...");
+				ros::shutdown();
+			} 
+			else if (ac.getState() == actionlib::SimpleClientGoalState::ABORTED) {
+				ROS_INFO("Goal aborted!");
+				ros::shutdown();
+			}
 		}
 		
 		
@@ -197,8 +222,8 @@ class PathGenerator {
 			ros::init(argc, argv, "global_checkpoints");
 			this->path_ = this->setWaypoints(argc, argv);
 			this->waypoint_ = this->path_.begin();
-			int total_goals = static_cast<int>(
-				this->path_.end()-this->path_.begin());
+			//int total_goals = static_cast<int>(
+			//	this->path_.end()-this->path_.begin());
 			ros::Publisher utm_pub = generatePublisherUTM();
 			
 			MoveBaseClient ac("move_base", true);
@@ -207,36 +232,32 @@ class PathGenerator {
 				ros::shutdown();
 			}
 			
-			// std::cout << "running node" << std::endl;
 			ros::Rate r(100);
 			while (ros::ok() && this->goalNotReached()) {
-				
 				ros::spinOnce();
-				
-				// geometry_msgs::PointStamped point = *this->waypoint_;
 				
 				geometry_msgs::PointStamped map_point = 
 					this->utmToOdomPoint(*this->waypoint_);
 				move_base_msgs::MoveBaseGoal goal = 
 					this->generateGoal("odom", map_point);
 				
+				ROS_INFO("Sending goal...");
 				ac.sendGoal(goal);
 				ac.waitForResult();
-				ROS_INFO("Sending goal...");
 				if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
-					// int goal_num = static_cast<int>(this->waypoint_ - this->path_.begin())+1;
-					ROS_INFO("Reached goal %d of %d successfully.", 
-						this->getGoalNum(), total_goals);
-					this->publishWaypointUTM(utm_pub, *this->waypoint_);
-					++this->waypoint_;
+					//ROS_INFO("Reached goal %d of %d successfully.", 
+					//	this->getGoalNum(), total_goals);
+					//this->publishWaypointUTM(utm_pub, *this->waypoint_);
+					//++this->waypoint_;
+					this->navSuccess(utm_pub);
 				} else {
-					ROS_INFO("Navigation goal failed...");
-					ros::shutdown();
+					// ROS_INFO("Navigation goal failed...");
+					// ros::shutdown();
+					this->diagnoseNavFailure(ac);
 				}
 				r.sleep();
 			}
 			ROS_INFO("Navigation completed.");
-			//ros::Duration(30).sleep();
 			return 0;
 		}
 		
