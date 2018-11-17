@@ -123,10 +123,11 @@ class PathGenerator {
 			goal.target_pose.pose.position.y = point.point.y;
 			goal.target_pose.pose.orientation.w = 1;
 			
+			geometry_msgs::PointStamped nPoint;
 			if (this->headingToGoal())
-				return goal;
-			
-			geometry_msgs::PointStamped nPoint = this->utmToOdomPoint(*(this->waypoint_+1));
+				nPoint = this->utmToOdomPoint(*(this->path_.begin()));
+			else
+				nPoint = this->utmToOdomPoint(*(this->waypoint_+1));
 			// TODO replace with first pose with sensor data?
 			//PointXY iPoint = this->beganPath() ? 
 			//	this->pose_ : *(this->waypoint_-1);
