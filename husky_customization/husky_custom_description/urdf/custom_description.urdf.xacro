@@ -39,8 +39,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   <!-- Insert Laser -->
 
 
-  <!-- link allows connection of laser -->
-  <!-- should be revised to reflect reality of husky -->
+  <!-- link allows connection of top plate -->
   <link name="top_plate_link" />
   
   <joint name="top_plate_joint" type="fixed">
@@ -48,7 +47,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
     <child link="top_plate_link" />
     <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
   </joint>
-  <!-- link allows connection of laser -->
+  <!-- link allows connection of top plate -->
 
   <!-- COMMENT OUT FOR SIM -->	
   
